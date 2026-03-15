@@ -1,0 +1,15 @@
+# PyTorch
+torch>=2.0.0
+torchvision>=0.15.0
+
+# GUI
+PyQt6>=6.4.0
+
+# 图像处理
+Pillow>=9.5.0
+
+# 数值计算
+numpy>=1.24.0
+
+# 可视化(训练时使用)
+matplotlib>=3.7.0
