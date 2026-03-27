@@ -38,14 +38,14 @@ class Net(torch.nn.Module):
         self.fc1 = torch.nn.Linear(64*7*7, 128) 
         self.bn3 = torch.nn.BatchNorm1d(128)
         self.fc2 = torch.nn.Linear(128, 10)
-        self.dropout = torch.nn.Dropout(0.25)
+        #self.dropout = torch.nn.Dropout(0.1)
 
     def forward(self, x):
         batch_size = x.size(0)
         x = self.pooling(self.relu(self.bn1(self.conv1(x))))
         x = self.pooling(self.relu(self.bn2(self.conv2(x))))
         x = x.view(batch_size, -1) # flatten
-        x = self.dropout(self.relu(self.bn3(self.fc1(x))))
+        x = self.relu(self.bn3(self.fc1(x)))
         x = self.fc2(x)
         return x
     
@@ -55,11 +55,13 @@ model.to(device)
 criterion = torch.nn.CrossEntropyLoss(reduction='mean')
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 def train(epochs):
-    acc = []
+    #acc = []
     epoch_ls = []
     for epoch in range(epochs):
         epoch_ls.append(epoch)
         running_loss = 0.0
+        correct = 0
+        total = 0
         for batch_idx, (inputs, labels) in enumerate(train_loader):
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
@@ -71,10 +73,13 @@ def train(epochs):
             
 
             running_loss += loss.item()
-            if (batch_idx + 1) % 100 == 0:
-                print(f'Epoch [{epoch+1}], Step [{batch_idx+1}/{len(train_loader)}], Loss: {running_loss / 100:.4f}')
-                running_loss = 0.0
-        acc.append(1 - running_loss / 100)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+            
+
+        epoch_acc = 100 * correct / total
+        print(f'Epoch [{epoch+1}], Loss: {running_loss:.4f}, Accuracy: {epoch_acc:.2f}%')
     #plt.plot(epoch_ls, acc)
     #plt.xlabel('Epoch')
     #plt.ylabel('Accuracy')
@@ -82,6 +87,7 @@ def train(epochs):
     #plt.show()
 
 def test():
+    model.eval()
     correct = 0
     total = 0
     with torch.no_grad():
@@ -93,22 +99,8 @@ def test():
             correct += (predicted == labels).sum().item()
     print(f'Accuracy on test set: {100 * correct / total:.2f}%')
 
-def preprocess_image(image_path):
-    img = Image.open(image_path).convert('L')
-    transform = transforms.Compose([transforms.Resize((28, 28)), 
-                                    transforms.ToTensor(),
-                                    transforms.Normalize((0.1307,), (0.3081,))
-                                    ])
-    tensor = transform(img).unsqueeze(0)
-    return tensor
-def predict(image_path):
-    with torch.no_grad():
-        tensor = preprocess_image(image_path)
-        output = model(tensor)
-        _, predicted = torch.max(output, 1)
-        probabilities = torch.exp(output)
-        print(f'Predicted class: {predicted.item()}')
-        print(f"置信度：{probabilities[0][predicted.item()].item():.4f}")
+
+
 
 def save_model(path='model.pth'):
     torch.save(model.state_dict(), path)
